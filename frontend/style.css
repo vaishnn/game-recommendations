@@ -1,0 +1,379 @@
+/* --- Steam-Inspired Color Palette & Global Styles --- */
+:root {
+    --steam-dark-blue: #1b2838;
+    --steam-med-blue: #2a475e;
+    --steam-light-blue: #66c0f4;
+    --steam-cyan-text: #c7d5e0;
+    --steam-gray-text: #acb2b8;
+    --steam-green: #70a021;
+    --steam-red-error: #c53838;
+
+    --surface-color: var(--steam-med-blue);
+    --background-color: var(--steam-dark-blue);
+    --text-color: var(--steam-cyan-text);
+    --text-muted: var(--steam-gray-text);
+    --primary-color: var(--steam-light-blue);
+    --accent-color: var(--steam-green);
+    --border-color: rgba(102, 192, 244, 0.2);
+}
+
+body {
+    font-family:
+        "Poppins",
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Oxygen,
+        Ubuntu,
+        Cantarell,
+        "Open Sans",
+        "Helvetica Neue",
+        sans-serif;
+    background-color: var(--background-color);
+    background-image: linear-gradient(
+        to bottom,
+        #23344a,
+        var(--background-color)
+    );
+    background-attachment: fixed;
+    color: var(--text-color);
+    margin: 0;
+    padding: 2rem 1rem;
+    min-height: 100vh;
+}
+
+/* --- Main Two-Panel Layout --- */
+.main-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+.left-panel {
+    flex: 1;
+    min-width: 450px;
+}
+
+.right-panel {
+    flex: 1;
+    min-width: 450px;
+}
+
+/* --- Header & Typography --- */
+header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+/* --- Main Card Layout --- */
+.card {
+    background-color: var(--surface-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.card-title-label {
+    display: block;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 1.5rem;
+}
+
+/* --- Input & Buttons --- */
+.input-group {
+    display: flex;
+    gap: 1rem;
+}
+
+input[type="text"],
+input[type="search"] {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    color: var(--text-color);
+    font-size: 1rem;
+    transition:
+        border-color 0.3s,
+        box-shadow 0.3s;
+}
+
+input[type="text"]:focus,
+input[type="search"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(102, 192, 244, 0.3);
+}
+
+button {
+    padding: 0.75rem 1.5rem;
+    background-color: var(--primary-color);
+    color: var(--background-color);
+    font-weight: 600;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+    transition:
+        background-color 0.3s,
+        transform 0.1s;
+}
+button:hover {
+    background-color: white;
+}
+button:active {
+    transform: scale(0.97);
+}
+button:disabled {
+    background-color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+#recommend-button {
+    width: 100%;
+    justify-content: center;
+    padding: 1rem;
+    font-size: 1.2rem;
+    background: linear-gradient(45deg, var(--steam-green), #92d42d);
+    color: white;
+}
+#recommend-button:hover {
+    background: linear-gradient(45deg, #82b92f, var(--steam-green));
+}
+
+/* --- Status & Loading Messages --- */
+.status-message {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 5px;
+    font-weight: 600;
+}
+.status-message.loading {
+    background-color: rgba(102, 192, 244, 0.2);
+    color: var(--primary-color);
+}
+.status-message.error {
+    background-color: rgba(197, 56, 56, 0.2);
+    color: var(--steam-red-error);
+}
+.status-message.success {
+    background-color: rgba(112, 160, 33, 0.2);
+    color: var(--accent-color);
+}
+
+/* --- Game Library List --- */
+.search-bar {
+    position: relative;
+}
+.search-bar i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+}
+.search-bar input {
+    padding-left: 3rem;
+}
+
+#game-library-list,
+#recommendations-list {
+    list-style: none;
+    padding: 0;
+    margin: 1.5rem 0 0 0;
+    max-height: 60vh;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+}
+#game-library-list li {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    user-select: none;
+}
+#game-library-list li:nth-child(odd) {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+#game-library-list li:hover {
+    background-color: rgba(102, 192, 244, 0.1);
+}
+
+.game-item-header {
+    display: flex;
+    align-items: center;
+}
+.icon-placeholder {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    margin-right: 1rem;
+    background-color: var(--border-color);
+    transition: all 0.2s;
+}
+li.selected .icon-placeholder {
+    background-color: var(--accent-color);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' class='bi bi-check' viewBox='0 0 16 16'%3E%3Cpath d='M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z'/%3E%3C/svg%3E");
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* --- In-line Tuning Controls --- */
+.tuning-controls {
+    display: none; /* Hidden by default */
+    padding: 1rem 0 0.5rem 3rem;
+    margin-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+li.selected .tuning-controls {
+    display: block; /* Shown when game is selected */
+}
+
+/* --- General Settings & Sliders --- */
+.settings-control {
+    margin-bottom: 1.5rem;
+}
+.slider-container {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 1rem;
+}
+.slider-label {
+    color: var(--text-muted);
+}
+
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    background: var(--background-color);
+    border-radius: 5px;
+    outline: none;
+    border: 1px solid var(--border-color);
+}
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+    background: white;
+}
+
+.influence-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+.influence-percentage {
+    font-size: 1rem;
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+/* Toggle Switch */
+.toggle-switch {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 1.5rem;
+}
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+}
+.switch input {
+    display: none;
+}
+.slider-toggle {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    transition: 0.4s;
+    border-radius: 28px;
+}
+.slider-toggle:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: var(--text-muted);
+    transition: 0.4s;
+    border-radius: 50%;
+}
+input:checked + .slider-toggle {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+input:checked + .slider-toggle:before {
+    transform: translateX(22px);
+    background-color: white;
+}
+
+/* --- NEW: Styles for the Recommendation List --- */
+.recommendation-item {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.recommendation-item:last-child {
+    border-bottom: none;
+}
+.recommendation-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--primary-color);
+}
+.recommendation-desc {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 950px) {
+    .left-panel,
+    .right-panel {
+        min-width: 100%;
+    }
+}

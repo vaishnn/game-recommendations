@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Steam Game Recommender</title>
+        <link rel="stylesheet" href="style.css" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap"
+            rel="stylesheet"
+        />
+    </head>
+    <body>
+        <div class="main-container">
+            <!-- LEFT PANEL for Inputs and Game Selection -->
+            <div class="left-panel">
+                <header>
+                    <h1>
+                        <i data-lucide="gamepad-2"></i> Steam Game Recommender
+                    </h1>
+                </header>
+
+                <main>
+                    <section class="card">
+                        <div class="input-group">
+                            <input
+                                type="text"
+                                id="steamIdInput"
+                                placeholder="Enter your 17-digit SteamID64 to begin..."
+                            />
+                            <button id="fetchGamesBtn">
+                                <i data-lucide="download-cloud"></i>
+                                <span>Fetch Games</span>
+                            </button>
+                        </div>
+                        <div
+                            id="api-status"
+                            class="status-message"
+                            style="display: none"
+                        ></div>
+                    </section>
+
+                    <section
+                        id="game-library-section"
+                        class="card"
+                        style="display: none"
+                    >
+                        <div class="search-bar">
+                            <i data-lucide="search"></i>
+                            <input
+                                type="search"
+                                id="gameSearchInput"
+                                placeholder="Search library to select & fine-tune games..."
+                            />
+                        </div>
+                        <ul id="game-library-list">
+                            <!-- Game items and their tuning controls will be dynamically inserted here -->
+                        </ul>
+                    </section>
+                </main>
+            </div>
+
+            <!-- RIGHT PANEL for Discovery Settings and Results -->
+            <div
+                class="right-panel"
+                id="right-panel-main"
+                style="display: none"
+            >
+                <section id="results-section" class="card">
+                    <div class="settings-control">
+                        <label for="niche-slider" class="card-title-label"
+                            >Discovery Preference</label
+                        >
+                        <div class="slider-container">
+                            <span class="slider-label">Popular</span>
+                            <input
+                                type="range"
+                                id="niche-slider"
+                                min="-1"
+                                max="1"
+                                value="0"
+                            />
+                            <span class="slider-label">Niche</span>
+                        </div>
+                    </div>
+
+                    <p>
+                        When you're ready, hit the button below to generate
+                        recommendations from your selections.
+                    </p>
+                    <button id="recommend-button">
+                        <i data-lucide="wand-sparkles"></i>
+                        <span>Get Recommendations</span>
+                    </button>
+                </section>
+
+                <section
+                    id="recommendations-section"
+                    class="card"
+                    style="display: none"
+                >
+                    <label class="card-title-label">Your Recommendations</label>
+                    <ul id="recommendations-list">
+                        <!-- Recommended games will appear here -->
+                    </ul>
+                </section>
+            </div>
+        </div>
+
+        <script src="script.js"></script>
+        <script src="https://unpkg.com/lucide-react@0.395.0/dist/umd/lucide.min.js"></script>
+        <script>
+            lucide.createIcons();
+        </script>
+    </body>
+</html>
