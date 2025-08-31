@@ -18,7 +18,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const nicheSlider = document.getElementById("niche-slider");
   const nicheValueDisplay = document.getElementById("niche-value-display");
 
-  // FIX: Corrected the element IDs for the output section and list
   const recommendationsSection = document.getElementById(
     "recommendations-output",
   );
@@ -28,7 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let allGames = [];
   let selectedGames = new Map();
 
-  // --- Event Listeners ---˝`
+  // --- Event Listeners ---
   fetchGamesBtn.addEventListener("click", handleFetchGames);
   gameSearchInput.addEventListener("input", handleSearch);
   gameList.addEventListener("click", handleGameSelectionToggle);
@@ -95,20 +94,16 @@ document.addEventListener("DOMContentLoaded", () => {
   async function handleGetRecommendations() {
     const inputGames = [];
 
-    // FIX: Iterate over the reliable 'selectedGames' map instead of the DOM
-    // This prevents bugs caused by the search filter.
     for (const appId of selectedGames.keys()) {
-      let multiplier = 1.0; // Default multiplier
-      let type = "like"; // Default type
+      let multiplier = 1.0;
+      let type = "like";
 
-      // Try to find the controls in the DOM to get current slider values
       const listItem = gameList.querySelector(`li[data-appid="${appId}"]`);
       const controls = listItem
         ? listItem.querySelector(".tuning-controls")
         : null;
 
       if (controls) {
-        // If the item is visible and has controls, use its values
         multiplier =
           parseInt(controls.querySelector(".influence-slider").value, 10) / 100;
         type = controls.querySelector(".opposite-toggle").checked
@@ -138,7 +133,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     showStatus("Getting recommendations from the model...", "loading");
     recommendButton.disabled = true;
-    // FIX: Target the <span> to preserve the button's icon
     recommendButton.querySelector("span").textContent = "Thinking...";
     recommendationsSection.style.display = "none";
 
@@ -202,7 +196,6 @@ document.addEventListener("DOMContentLoaded", () => {
       game.name.toLowerCase().includes(query),
     );
     renderGameList(filteredGames);
-    // Re-apply selection styles and controls after re-rendering
     gameList.querySelectorAll("li").forEach((li) => {
       if (selectedGames.has(li.dataset.appid)) {
         li.classList.add("selected");
@@ -216,7 +209,7 @@ document.addEventListener("DOMContentLoaded", () => {
    */
   function handleGameSelectionToggle(event) {
     const li = event.target.closest("li");
-    if (!li || !li.dataset.appid) return; // Ensure it's a valid game item
+    if (!li || !li.dataset.appid) return;
     if (event.target.closest(".tuning-controls")) return;
 
     const appId = li.dataset.appid;
@@ -260,7 +253,6 @@ document.addEventListener("DOMContentLoaded", () => {
    * Injects tuning controls into a selected game's list item.
    */
   function addTuningControls(listItem) {
-    // Prevent adding controls if they already exist
     if (listItem.querySelector(".tuning-controls")) return;
 
     const controlsContainer = document.createElement("div");
