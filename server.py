@@ -73,7 +73,7 @@ def get_advanced_recommendations(input_games: list, niche_factor: float, cosine_
 def get_owned_games():
     """Acts as a secure proxy to get a user's owned games from the Steam API."""
     steamid = request.args.get('steamid')
-
+    print(steamid)
     if not steamid:
         return jsonify({"error": "SteamID is required"}), 400
 
@@ -106,7 +106,7 @@ def recommend():
     """
     # Get the JSON data sent from the JavaScript frontend
     data = request.get_json()
-
+    print(data)
     # Validate the incoming data
     if not data or 'input_games' not in data or 'niche_factor' not in data:
         return jsonify({"error": "Invalid request. Missing 'input_games' or 'niche_factor'."}), 400

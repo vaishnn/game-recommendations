@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Get the new recommendations elements
   const recommendationsSection = document.getElementById(
-    "recommendations-section",
+    "recommendations-output",
   );
   const recommendationsList = document.getElementById("recommendations-list");
 
@@ -86,11 +86,29 @@ document.addEventListener("DOMContentLoaded", () => {
   async function handleGetRecommendations() {
     // --- 1. Gather all user inputs ---
     const nicheSlider = document.getElementById("niche-slider");
-    const inputGames = [];
+        const inputGames = [];
 
-    const selectedItems = gameList.querySelectorAll("li.selected");
-    selectedItems.forEach((item) => {
-      const controls = item.querySelector(".tuning-controls");
+        // --- FIX: Iterate over the state map, not the DOM ---
+        for (const appId of selectedGames.keys()) {
+          let multiplier = 1.0; // Default multiplier
+          let type = "like";    // Default type
+
+          // Try to find the controls in the DOM to get the latest values
+          const listItem = gameList.querySelector(`li[data-appid="${appId}"]`);
+          const controls = listItem ? listItem.querySelector(".tuning-controls") : null;
+
+          if (controls) {
+              // If the item is visible and has controls, use its values
+              multiplier = parseInt(controls.querySelector(".influence-slider").value, 10) / 100;
+              type = controls.querySelector(".opposite-toggle").checked ? "opposite" : "like";
+          }
+
+          inputGames.push({
+              id: parseInt(appId, 10),
+              multiplier: multiplier,
+              type: type,
+          });
+        }
       if (controls) {
         // Format the data exactly as the Python model expects
         inputGames.push({
@@ -112,9 +130,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- 2. Call the Recommendation API ---
     showStatus("Getting recommendations from the model...", "loading");
-    recommendButton.disabled = true;
-    recommendButton.textContent = "Thinking...";
-    recommendationsSection.style.display = "none";
+    const recommendButtonSpan = recommendButton.querySelector("span");
+    recommendButtonSpan.textContent = "Thinking...";
+    // recommendButton.disabled = true;
+    // recommendButton.textContent = "Thinking...";
+    recommendButtonSpan.style.display = "none";
 
     try {
       const response = await fetch("http://127.0.0.1:4000/api/recommend", {
