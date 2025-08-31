@@ -3,6 +3,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const steamIdInput = document.getElementById("steamIdInput");
   const fetchGamesBtn = document.getElementById("fetchGamesBtn");
   const apiStatus = document.getElementById("api-status");
+  const API_BASE_URL =
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname === "localhost"
+      ? "http://127.0.0.1:4000"
+      : "https://recommend.vaishnav3d.org";
 
   const gameLibrarySection = document.getElementById("game-library-section");
   const gameSearchInput = document.getElementById("gameSearchInput");
@@ -10,22 +15,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const rightPanel = document.getElementById("right-panel-main");
   const recommendButton = document.getElementById("recommend-button");
+  const nicheSlider = document.getElementById("niche-slider");
+  const nicheValueDisplay = document.getElementById("niche-value-display");
 
-  // Get the new recommendations elements
+  // FIX: Corrected the element IDs for the output section and list
   const recommendationsSection = document.getElementById(
     "recommendations-output",
   );
-  const recommendationsList = document.getElementById("recommendations-list");
+  const recommendationList = document.getElementById("recommendations-list");
 
   // --- State ---
   let allGames = [];
   let selectedGames = new Map();
 
-  // --- Event Listeners ---
+  // --- Event Listeners ---˝`
   fetchGamesBtn.addEventListener("click", handleFetchGames);
   gameSearchInput.addEventListener("input", handleSearch);
   gameList.addEventListener("click", handleGameSelectionToggle);
   recommendButton.addEventListener("click", handleGetRecommendations);
+  nicheSlider.addEventListener("input", (e) => {
+    nicheValueDisplay.textContent = parseFloat(e.target.value).toFixed(1);
+  });
 
   // --- Main Functions ---
 
@@ -45,9 +55,8 @@ document.addEventListener("DOMContentLoaded", () => {
     fetchGamesBtn.querySelector("span").textContent = "Fetching...";
 
     try {
-      // Ensure your backend is running on the correct port (e.g., 4000)
       const response = await fetch(
-        `http://127.0.0.1:4000/api/get-games?steamid=${steamId}`,
+        `${API_BASE_URL}/api/get-games?steamid=${steamId}`,
       );
       if (!response.ok) {
         const errorData = await response.json();
@@ -81,67 +90,62 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /**
-   * Gathers all settings, calls the ML model API, and renders the results.
+   * Gathers settings, calls the ML model API, and renders the results.
    */
   async function handleGetRecommendations() {
-    // --- 1. Gather all user inputs ---
-    const nicheSlider = document.getElementById("niche-slider");
-        const inputGames = [];
+    const inputGames = [];
 
-        // --- FIX: Iterate over the state map, not the DOM ---
-        for (const appId of selectedGames.keys()) {
-          let multiplier = 1.0; // Default multiplier
-          let type = "like";    // Default type
+    // FIX: Iterate over the reliable 'selectedGames' map instead of the DOM
+    // This prevents bugs caused by the search filter.
+    for (const appId of selectedGames.keys()) {
+      let multiplier = 1.0; // Default multiplier
+      let type = "like"; // Default type
 
-          // Try to find the controls in the DOM to get the latest values
-          const listItem = gameList.querySelector(`li[data-appid="${appId}"]`);
-          const controls = listItem ? listItem.querySelector(".tuning-controls") : null;
+      // Try to find the controls in the DOM to get current slider values
+      const listItem = gameList.querySelector(`li[data-appid="${appId}"]`);
+      const controls = listItem
+        ? listItem.querySelector(".tuning-controls")
+        : null;
 
-          if (controls) {
-              // If the item is visible and has controls, use its values
-              multiplier = parseInt(controls.querySelector(".influence-slider").value, 10) / 100;
-              type = controls.querySelector(".opposite-toggle").checked ? "opposite" : "like";
-          }
-
-          inputGames.push({
-              id: parseInt(appId, 10),
-              multiplier: multiplier,
-              type: type,
-          });
-        }
       if (controls) {
-        // Format the data exactly as the Python model expects
-        inputGames.push({
-          id: parseInt(item.dataset.appid, 10),
-          multiplier:
-            parseInt(controls.querySelector(".influence-slider").value, 10) /
-            100, // Convert percentage to a float (e.g., 150% -> 1.5)
-          type: controls.querySelector(".opposite-toggle").checked
-            ? "opposite"
-            : "like",
-        });
+        // If the item is visible and has controls, use its values
+        multiplier =
+          parseInt(controls.querySelector(".influence-slider").value, 10) / 100;
+        type = controls.querySelector(".opposite-toggle").checked
+          ? "opposite"
+          : "like";
       }
-    });
+
+      inputGames.push({
+        id: parseInt(appId, 10),
+        multiplier: multiplier,
+        type: type,
+      });
+    }
+
+    if (inputGames.length === 0) {
+      showStatus(
+        "Please select at least one game to get recommendations.",
+        "error",
+      );
+      return;
+    }
 
     const recommendationParams = {
       input_games: inputGames,
       niche_factor: parseFloat(nicheSlider.value),
     };
 
-    // --- 2. Call the Recommendation API ---
     showStatus("Getting recommendations from the model...", "loading");
-    const recommendButtonSpan = recommendButton.querySelector("span");
-    recommendButtonSpan.textContent = "Thinking...";
-    // recommendButton.disabled = true;
-    // recommendButton.textContent = "Thinking...";
-    recommendButtonSpan.style.display = "none";
+    recommendButton.disabled = true;
+    // FIX: Target the <span> to preserve the button's icon
+    recommendButton.querySelector("span").textContent = "Thinking...";
+    recommendationsSection.style.display = "none";
 
     try {
-      const response = await fetch("http://127.0.0.1:4000/api/recommend", {
+      const response = await fetch(`${API_BASE_URL}/api/recommend`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(recommendationParams),
       });
 
@@ -153,8 +157,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const recommendations = await response.json();
-
-      // --- 3. Render the Results ---
       showStatus("Here are your recommendations!", "success");
       renderRecommendations(recommendations);
     } catch (error) {
@@ -162,28 +164,29 @@ document.addEventListener("DOMContentLoaded", () => {
       showStatus(`Error: ${error.message}`, "error");
     } finally {
       recommendButton.disabled = false;
-      recommendButton.textContent = "Get Recommendations";
+      recommendButton.querySelector("span").textContent = "Get Recommendations";
     }
   }
 
   /**
-   * Renders the list of recommended games into the DOM.
+   * Renders the list of recommended games.
    */
   function renderRecommendations(recommendations) {
     if (!recommendations || recommendations.length === 0) {
-      recommendationsList.innerHTML =
+      recommendationList.innerHTML =
         "<li>Sorry, no recommendations could be generated with these selections.</li>";
     } else {
-      recommendationsList.innerHTML = recommendations
+      recommendationList.innerHTML = recommendations
         .map(
           (game) => `
                 <li class="recommendation-item">
+                    <img class="game-icon" src="https://cdn.akamai.steamstatic.com/steam/apps/${game.id}/capsule_184x69.jpg" alt="${game.name} icon">
                     <div class="recommendation-details">
                         <div class="recommendation-name">${game.name}</div>
                         <div class="recommendation-desc">${game.short_description}</div>
                     </div>
                 </li>
-            `,
+                `,
         )
         .join("");
     }
@@ -199,23 +202,21 @@ document.addEventListener("DOMContentLoaded", () => {
       game.name.toLowerCase().includes(query),
     );
     renderGameList(filteredGames);
-    // Re-apply selection styles after re-rendering
+    // Re-apply selection styles and controls after re-rendering
     gameList.querySelectorAll("li").forEach((li) => {
       if (selectedGames.has(li.dataset.appid)) {
         li.classList.add("selected");
-        addTuningControls(li); // Re-add controls to selected items
+        addTuningControls(li);
       }
     });
   }
-
-  // --- The rest of your well-written functions (unchanged) ---
 
   /**
    * Toggles the selection state of a game in the list.
    */
   function handleGameSelectionToggle(event) {
     const li = event.target.closest("li");
-    if (!li) return;
+    if (!li || !li.dataset.appid) return; // Ensure it's a valid game item
     if (event.target.closest(".tuning-controls")) return;
 
     const appId = li.dataset.appid;
@@ -238,7 +239,7 @@ document.addEventListener("DOMContentLoaded", () => {
    */
   function renderGameList(games) {
     if (games.length === 0) {
-      gameList.innerHTML = "<li>No games found.</li>";
+      gameList.innerHTML = "<li>No games found matching your search.</li>";
       return;
     }
     gameList.innerHTML = games
@@ -250,7 +251,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <label>${game.name}</label>
                 </div>
             </li>
-        `,
+            `,
       )
       .join("");
   }
@@ -259,6 +260,9 @@ document.addEventListener("DOMContentLoaded", () => {
    * Injects tuning controls into a selected game's list item.
    */
   function addTuningControls(listItem) {
+    // Prevent adding controls if they already exist
+    if (listItem.querySelector(".tuning-controls")) return;
+
     const controlsContainer = document.createElement("div");
     controlsContainer.className = "tuning-controls";
     controlsContainer.innerHTML = `
@@ -272,11 +276,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 <span class="slider-label">200%</span>
             </div>
             <div class="toggle-switch">
-                <span>Recommend Opposite</span>
+                <span>Recommend Similar</span>
                 <label class="switch">
                     <input type="checkbox" class="opposite-toggle">
                     <span class="slider-toggle"></span>
                 </label>
+                <span>Opposite</span>
             </div>
         `;
     listItem.appendChild(controlsContainer);
@@ -301,7 +306,7 @@ document.addEventListener("DOMContentLoaded", () => {
    * Shows or hides the right panel based on whether any games are selected.
    */
   function updateRightPanelVisibility() {
-    rightPanel.style.display = selectedGames.size > 0 ? "block" : "none";
+    rightPanel.style.display = selectedGames.size > 0 ? "flex" : "none";
   }
 
   /**
@@ -314,7 +319,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /**
-   * Resets the entire UI to its initial state.
+   * Resets the UI when fetching a new library.
    */
   function resetUI() {
     gameLibrarySection.style.display = "none";
@@ -323,5 +328,6 @@ document.addEventListener("DOMContentLoaded", () => {
     gameList.innerHTML = "";
     allGames = [];
     selectedGames.clear();
+    apiStatus.style.display = "none";
   }
 });

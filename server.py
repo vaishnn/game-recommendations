@@ -6,6 +6,7 @@ import os
 from dotenv import load_dotenv
 import pandas as pd
 import pickle
+import sys
 
 # --- Initial Setup ---
 load_dotenv()
@@ -54,16 +55,43 @@ def get_advanced_recommendations(input_games: list, niche_factor: float, cosine_
         total_scores += (adjusted_scores * multiplier)
 
     # The niche_factor directly adjusts the weight of the popularity score.
-    adjustment = 1 + (dataframe['popularity_score'] * niche_factor)
-    total_scores = total_scores * adjustment
+    # adjustment = 1 + (dataframe['popularity_score'] * niche_factor)
+    # total_scores = total_scores * adjustment
+    candidate_indices = total_scores.sort_values(ascending=False).head(200).index
+    candidates_df = dataframe.iloc[candidate_indices].copy()
+    print(10)
+    candidates_df['total_reviews'] = candidates_df['positive_reviews'] + candidates_df['negative_reviews']
+    print(niche_factor, flush=True)
+    # CRITICAL: Check if the 'total_reviews' column exists
+    if 'total_reviews' not in candidates_df.columns:
+        print("WARNING: 'total_reviews' column not found. Niche factor will not work correctly.")
+        # Fallback to the top 10 if the column is missing
+        return candidates_df.head(10)
 
-    # Remove the input games themselves from the recommendation list
-    total_scores = total_scores.drop(input_game_indices, errors='ignore')
+    # 2. Based on niche_factor, filter or re-rank the candidates
+    if niche_factor <= -0.5:  # Find "very niche" games
+        # Filter for games with a low number of reviews (e.g., between 50 and 500)
+        niche_games = candidates_df[
+            (candidates_df['total_reviews'] >= 50) & (candidates_df['total_reviews'] <= 500)
+        ]
 
-    # Sort the final scores and get the top 10 game names
-    top_10_indices = total_scores.sort_values(ascending=False).head(10).index
+        # If we found enough niche games, return them.
+        # Otherwise, return the most similar games we have.
+        if len(niche_games) > 0:
+            return niche_games.head(10)
+        else:
+            return candidates_df.head(10)
 
-    return dataframe.iloc[top_10_indices]
+
+    elif niche_factor >= 0.5:  # Find "very famous" games
+        # Re-sort the candidates by their review count in descending order
+        popular_games = candidates_df.sort_values(by='total_reviews', ascending=False)
+        return popular_games.head(10)
+
+    else:  # For a "normal" (balanced) factor close to 0
+        # Return the original top 10 based purely on game similarity
+        return candidates_df.head(10)
+
 
 
 # --- API Route Definitions ---

@@ -59,6 +59,12 @@ body {
 
 .right-panel {
     flex: 1;
+    display: flex;
+    /* This is the key change: stack items vertically */
+    flex-direction: column;
+
+    /* This adds a nice space between the two cards */
+    gap: 20px;
     min-width: 450px;
 }
 
@@ -226,6 +232,7 @@ button:disabled {
 .game-item-header {
     display: flex;
     align-items: center;
+    gap: 12px;
 }
 .icon-placeholder {
     width: 24px;
@@ -353,21 +360,32 @@ input:checked + .slider-toggle:before {
 
 /* --- NEW: Styles for the Recommendation List --- */
 .recommendation-item {
-    padding: 1rem;
-    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border-bottom: 1px solid #3a4753;
 }
-.recommendation-item:last-child {
-    border-bottom: none;
+
+/* 2. Container for the text content */
+/* This is the key change: it stacks the name and description vertically */
+.recommendation-details {
+    display: flex;
+    flex-direction: column;
 }
+
+/* 3. Style for the game's name */
 .recommendation-name {
     font-weight: 600;
-    font-size: 1.1rem;
-    color: var(--primary-color);
+    font-size: 1em;
+    color: #e3e3e3; /* A slightly brighter color for the title */
 }
+
+/* 4. Style for the game's description */
+/* This is now always visible */
 .recommendation-desc {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    margin-top: 0.25rem;
+    font-size: 0.9em;
+    color: #aeb9c2; /* A softer color for the description text */
 }
 
 /* Responsive adjustments */
