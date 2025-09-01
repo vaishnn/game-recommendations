@@ -25,10 +25,11 @@ This project aims to provide Steam users with personalized game recommendations 
 
 This project is built with the following technologies:
 
-* [Python](https://www.python.org/) (Polars, Streamlit, beautifulsoup4)
+* [Python](https://www.python.org/) (Pandas, beautifulsoup4)
 * [Flask](https://flask.palletsprojects.com/en/2.0.x/)
+* [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript) (Frontend)
 * [AWS RDS](https://aws.amazon.com/rds/) (for the database)
-* [AWS EC2](https://aws.amazon.com/ec2/) (for hosting the server)
+* [Oracle Compute Instance](https://www.oracle.com/in/cloud/compute/) (for hosting the server)
 
 ## Architecture
 
@@ -36,8 +37,9 @@ The system follows a simple architecture:
 
 1.  **Data Collection & Preprocessing (Python Script):** A Python script is responsible for fetching, cleaning, and preprocessing the Steam user data.
 2.  **Database (AWS RDS):** The processed data is stored in a relational database hosted on AWS RDS. This allows for efficient querying and management of the data.
-3.  **Recommendation Engine (Python on EC2):** The core recommendation logic is implemented in Python and runs on an AWS EC2 instance. This engine can use various recommendation algorithms (e.g., collaborative filtering, content-based filtering) to generate recommendations.
-4.  **API Server (Python on EC2):** A web server (e.g., built with Flask) exposes API endpoints that allow users or a front-end application to request recommendations.
+3.  **Recommendation Engine (Python on Oracle Compute):** The core recommendation logic is implemented in Python and runs on an Oracle Cloud Compute instance. This engine can use various recommendation algorithms (e.g., collaborative filtering, content-based filtering) to generate recommendations.
+4.  **API Server (Python on Oracle Compute):** A web server (built with Flask) exposes API endpoints that allow users or a front-end application to request recommendations.
+5.  **Frontend (JavaScript):** The user interface is built using JavaScript and communicates with the Flask API server to display recommendations.
 
 ## Getting Started
 
@@ -76,16 +78,8 @@ Make sure you have the following installed:
 
 1.  **Run the data processing script:**
     ```sh
-    python CreatingTables.py
-    # python DataInsertion.py (Currently Developing)
-    # Developing Further Steps
+    python scraper.py
     ```
-2.  **Start the server:**
-    ```sh
-    Streamlit run app.py
-    # Server integration with backend is still in process
-    ```
-The server will start on 'http://localhost:8501/`.
 **Example API Endpoint:**
 
 * `GET /recommendations?user_id=<steam_user_id>`
@@ -100,24 +94,6 @@ The database is hosted on AWS RDS and uses a PostgreSQL (or your chosen) engine.
 
 ```mermaid
 erDiagram
-    users {
-        int user_id PK
-        varchar username
-        varchar email
-        bigint steam_id
-        datetime registration_date
-        datetime last_login
-        json user_preferences
-    }
-    games {
-        int id PK
-        varchar name
-        date release_date
-        decimal price
-        int positive_reviews
-        int negative_reviews
-        text short_description
-    }
     developers {
         int id PK
         varchar name
@@ -138,106 +114,114 @@ erDiagram
         int id PK
         varchar name
     }
-    audio_languages {
-        int id PK
-        varchar name
-    }
     tags {
         int id PK
         varchar name
     }
+    apps {
+        int id PK
+        varchar type
+        varchar name
+        int base_game_id FK
+        date release_date
+        decimal price
+        int positive_reviews
+        int negative_reviews
+        int recommendations
+        int peak_ccu
+        int metacritic_score
+        varchar metacritic_url
+        int required_age
+        int achievements_count
+        boolean supports_windows
+        boolean supports_mac
+        boolean supports_linux
+        varchar header_image_url
+        varchar estimated_owners
+        int user_score
+        varchar score_rank
+        text about_the_game
+        text detailed_description
+        text short_description
+        text reviews_summary
+    }
     achievements {
         int id PK
-        int game_id FK
-        varchar external_id
-        varchar name
+        int app_id FK
+        varchar api_name
+        text display_name
         text description
+        decimal global_completion_rate
     }
-    game_reviews {
-        int id PK
-        int game_id FK
-        int user_id FK
+    reviews {
+        bigint review_id PK
+        bigint author_steamid
+        varchar language
         text review_text
         boolean is_recommended
+        int votes_helpful
+        int votes_funny
+        datetime review_date
+        varchar review_source
     }
-    game_rankings {
-        int id PK
-        int game_id FK
-        varchar ranking_type
-        decimal ranking_value
+    app_reviews {
+        int app_id FK
+        bigint review_id FK
     }
-    user_game_interactions {
-        int id PK
-        int user_id FK
-        int game_id FK
-        varchar interaction_type
-        decimal interaction_value
+    app_developers {
+        int app_id FK
+        int developer_id FK
     }
-    user_achievements {
-        int id PK
-        int user_id FK
-        int achievement_id FK
-        datetime unlocked_date
+    app_publishers {
+        int app_id FK
+        int publisher_id FK
     }
-    game_developers {
-        int game_id PK, FK
-        int developer_id PK, FK
+    app_categories {
+        int app_id FK
+        int category_id FK
     }
-    game_publishers {
-        int game_id PK, FK
-        int publisher_id PK, FK
+    app_genres {
+        int app_id FK
+        int genre_id FK
     }
-    game_categories {
-        int game_id PK, FK
-        int category_id PK, FK
+    app_supported_languages {
+        int app_id FK
+        int language_id FK
+        boolean is_full_audio
     }
-    game_genres {
-        int game_id PK, FK
-        int genre_id PK, FK
+    app_tags {
+        int app_id FK
+        int tag_id FK
+        int tag_value
     }
-    game_audio_languages {
-        int game_id PK, FK
-        int language_id PK, FK
+    pending_dlc_links {
+        int dlc_id PK
+        int base_game_id
     }
-    game_supported_languages {
-        int game_id PK, FK
-        int language_id PK, FK
-    }
-    game_tags {
-        int game_id PK, FK
-        int tag_id PK, FK
+    scrape_status {
+        int appid PK
+        varchar status
+        datetime timestamp
     }
 
-    users ||--o{ user_game_interactions : "has"
-    games ||--o{ user_game_interactions : "has"
-    users ||--o{ game_reviews : "writes"
-    games ||--o{ game_reviews : "has"
-    users ||--o{ user_achievements : "unlocks"
-    achievements ||--o{ user_achievements : "is unlocked by"
-    games ||--o{ achievements : "has"
-    games ||--o{ game_rankings : "has"
-
-    games }o--|| game_developers : "developed by"
-    developers ||--o{ game_developers : "develops"
-
-    games }o--|| game_publishers : "published by"
-    publishers ||--o{ game_publishers : "publishes"
-
-    games }o--|| game_categories : "has"
-    categories ||--o{ game_categories : "belongs to"
-
-    games }o--|| game_genres : "has"
-    genres ||--o{ game_genres : "belongs to"
-
-    games }o--|| game_audio_languages : "supports"
-    audio_languages ||--o{ game_audio_languages : "is supported in"
-
-    games }o--|| game_supported_languages : "supports"
-    languages ||--o{ game_supported_languages : "is supported in"
-
-    games }o--|| game_tags : "has"
-    tags ||--o{ game_tags : "is applied to"
-
+    apps ||--o{ achievements : "has"
+    apps ||--o{ app_reviews : "has"
+    apps ||--o{ app_developers : "has"
+    apps ||--o{ app_publishers : "has"
+    apps ||--o{ app_categories : "has"
+    apps ||--o{ app_genres : "has"
+    apps ||--o{ app_supported_languages : "has"
+    apps ||--o{ app_tags : "has"
+    achievements ||--o{ apps : "belongs to"
+    app_reviews ||--o{ reviews : "references"
+    app_developers ||--o{ developers : "references"
+    app_publishers ||--o{ publishers : "references"
+    app_categories ||--o{ categories : "references"
+    app_genres ||--o{ genres : "references"
+    app_supported_languages ||--o{ languages : "references"
+    app_tags ||--o{ tags : "references"
+    pending_dlc_links ||--o{ apps : "dlc for"
+    scrape_status ||--o{ apps : "status for"
 ```
 
 ## Future Work
