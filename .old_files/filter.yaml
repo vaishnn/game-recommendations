@@ -1,0 +1,35 @@
+# YAML for applying filters on the data
+#
+#
+base_data:
+  filter:
+    [
+      "playtest",
+      "server",
+      "dlc",
+      "artbook",
+      "soundtrack",
+      "demo ",
+      " demo",
+      "beta",
+      "alpha",
+      "downloadable content",
+      "expansion",
+      "add-on",
+      "skin",
+      "season pass",
+      " ost",
+      "ost ",
+      "sdk",
+      "editor",
+      "engine",
+      "software",
+      "application",
+      "wallpapers",
+      "digital art",
+      "wallpaper",
+      "guide",
+      "manual",
+      "manuals",
+      "beta",
+    ]

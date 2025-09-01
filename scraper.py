@@ -22,10 +22,10 @@ CONFIG_FILE = 'config.yaml'
 ENDPOINT_FILE = 'end_points.yaml'
 CONFIG = {}
 ENDPOINTS = {}
-# Loading Config File
+
+# Load configuration from config.yaml into global CONFIG
 def load_config_file():
     try:
-
         with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
             global CONFIG
             CONFIG = yaml.safe_load(f)
@@ -36,7 +36,7 @@ def load_config_file():
         logging.error(f"Error parsing {CONFIG_FILE}: {e}")
         raise
 
-# Loading EndPoint File
+# Load endpoint definitions from end_points.yaml into global ENDPOINTS
 def load_endpoints_file():
     try:
         with open(ENDPOINT_FILE, 'r', encoding='utf-8') as f:
@@ -51,7 +51,8 @@ def load_endpoints_file():
 
 load_dotenv()
 APPLIST_CACHE_FILE = 'applist.json'
-# All about Logging
+
+# Move old log files to .old_logs directory and return new log filename
 def manage_log_files():
     log_dir = ".old_logs"
     if not os.path.exists(log_dir):
@@ -64,6 +65,7 @@ def manage_log_files():
     return f"scraper_log_{dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
 
 log_filename = manage_log_files()
+# Set up logging to both file and console
 logging.basicConfig(
     level=logging.INFO,
     format='[%(levelname).1s %(asctime)s] %(message)s',
@@ -85,6 +87,7 @@ class SteamAPI:
         self.session.headers.update({'User-Agent': f'SteamScraper/{__version__}'})
         logging.info("SteamAPI initialized")
 
+    # Internal method to perform GET requests with error handling
     def _do_requests(self, url: str, params: Optional[dict] = None) -> dict:
         try:
             response = self.session.get(url, params = params, timeout = self.settings['timeout'])
@@ -95,6 +98,7 @@ class SteamAPI:
             logging.error(f"Request failed: {e}")
             return {}
 
+    # Get all Steam app IDs, using cache if available
     def get_all_app_ids(self)-> List[str]:
         if os.path.exists(APPLIST_CACHE_FILE):
             logging.info(f"Loading Applist from Cache: {APPLIST_CACHE_FILE}")
@@ -108,6 +112,7 @@ class SteamAPI:
             json.dump(app_ids, f)
         return app_ids
 
+    # Get details for a specific app ID
     def get_app_details(self, appid: str) -> Optional[dict]:
         params = {"appids": appid, "cc": self.config['currency'], "l":self.config['language']}
         data = self._do_requests(f"{ENDPOINTS['STEAM']['GET_APP_DETAILS']}", params)
@@ -115,26 +120,35 @@ class SteamAPI:
             return None
         return data[appid]['data'] if data[appid]['success'] else None
 
+    # Get additional details from SteamSpy for a game
     def get_steamspy_details(self, appid: str) -> Optional[dict]:
         data = self._do_requests(f"https://steamspy.com/api.php?request=appdetails&appid={appid}")
         return data if data and data.get('developer') else None
 
+    # Get achievements for a specific app ID
     def get_achievements(self, appid: str) -> list:
-        schema_data = self._do_requests(
-            ENDPOINTS['STEAM']['GET_SCHEMA_FOR_GAME'],
-            params={'key': os.getenv('STEAM_API_KEY'), 'appid': appid, 'l': self.config['language']})
-        if not schema_data or 'game' not in schema_data or 'availableGameStats' not in schema_data['game']: return []
-        achievements = schema_data['game']['availableGameStats'].get('achievements', [])
-        if achievements == []: return []
-        percent_data = self._do_requests("http://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/",
-            params={'gameid': appid})
-        percentages = {item['name']: item['percent']
-            for item in percent_data.get('achievementpercentages', {}).get('achievements', [])} if percent_data else {}
-        return [{"app_id": int(appid), "api_name": a['name'],
-            "display_name": a.get('displayName'), "description": a.get('description'),
-            "global_completion_rate": round(float(percentages.get(a['name'], 0.0)), 4)} for a in achievements]
+        try:
+            schema_data = self._do_requests(
+                ENDPOINTS['STEAM']['GET_SCHEMA_FOR_GAME'],
+                params={'key': os.getenv('STEAM_API_KEY'), 'appid': appid, 'l': self.config['language']})
+            if not schema_data or 'game' not in schema_data or 'availableGameStats' not in schema_data['game']:
+                return []
+            achievements = schema_data['game']['availableGameStats'].get('achievements', [])
+            if achievements == []:
+                return []
+            percent_data = self._do_requests("http://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/",
+                params={'gameid': appid})
+            # Map achievement names to their global completion percentages
+            percentages = {item['name']: item['percent']
+                for item in percent_data.get('achievementpercentages', {}).get('achievements', [])} if percent_data else {}
+            return [{"app_id": int(appid), "api_name": a['name'],
+                "display_name": a.get('displayName'), "description": a.get('description'),
+                "global_completion_rate": round(float(percentages.get(a['name'], 0.0)), 4)} for a in achievements]
+        except Exception as e:
+            print(f"Error fetching achievements for appid {appid}: {e}")
+            raise e
 
-
+    # Get user reviews for a specific app ID
     def get_reviews(self, appid: str) -> list:
         params = {'json': 1, 'num_per_page': 20,
             'language': 'english', 'filter_offtopic_activity': True,
@@ -148,55 +162,9 @@ class SteamAPI:
             rev.append(r)
         return rev
 
-# class IGDB_API(SteamAPI):
-#     def __init__(self, scraper_settings):
-#         super().__init__(steam_api_config={}, scraper_settings=scraper_settings)
-#         self.client_id = os.getenv("TWITCH_CLIENT_ID")
-#         self.client_secret = os.getenv("TWITCH_CLIENT_SECRET")
-#         self.access_token = self._get_twitch_access_token()
-#         self.headers = {'Client-ID': self.client_id, 'Authorization': f'Bearer {self.access_token}'} if self.access_token else {}
-
-#     def _get_twitch_access_token(self) -> Optional[str]:
-#         url = ENDPOINTS['TWITCH']['TWITCH_ACCESS_TOKEN']
-#         params = {"client_id": self.client_id, "client_secret": self.client_secret, "grant_type": "client_credentials"}
-#         try:
-#             response = requests.post(url, params=params)
-#             response.raise_for_status()
-#             logging.info("Successfully obtained Twitch/IGDB access token.")
-#             return response.json().get("access_token")
-#         except requests.exceptions.RequestException as e:
-#             logging.error(f"Failed to get Twitch access token: {e}")
-#             return None
-
-#     def fetch_time_to_beat_by_name(self, game_name: str) -> Optional[dict]:
-#         if not self.headers: return None
-#         better_name = game_name.replace('"', '\\"')
-#         id_query = f"fields id; where name={better_name}; limit 1"
-#         game_data = requests.post(ENDPOINTS['TWITCH']['IGDB_GAME_URL'], headers=self.headers, data=id_query)
-
-#         if not game_data:
-#             logging.debug(f"IGDB: Game '{game_name}' not found")
-#             return None
-#         game_id = game_data[0]['id'] #type: ignore
-
-#         time_query = f"fields normally, hastly, completely; where game_id = {game_id}; limit 1"
-
-
-
-#         ttb_data = requests.post(ENDPOINTS['TWITCH']['IGDB_TIME_TO_BEAT_URL'], headers=self.headers, data=time_query)
-#         if not ttb_data:
-#             logging.debug(f"IGDB: Time to beat data not found for game '{game_name}'")
-#             return None
-#         ttb = ttb_data[0] #type: ignore
-#         return {
-#             "main": round(ttb.get('hastly', 0) / 3600, 2) if ttb.get('hastly') else None,
-#             "extras": round(ttb.get('normally', 0) / 3600, 2) if ttb.get('normally') else None,
-#             "completionist": round(ttb.get('completely', 0) / 3600, 2) if ttb.get('completely') else None
-#         }
-
 class DatabaseManager:
     """
-    Creates all data
+    Handles all database operations, including table creation and data insertion.
     """
     def __init__(self, db_creds: dict, schema_yaml_path: str = "schema.yaml"):
         self.schema = self._load_schema(schema_yaml_path)
@@ -212,6 +180,7 @@ class DatabaseManager:
             logging.error(f"Database connection failed: {e}")
             sys.exit(1)
 
+    # Load database schema from YAML file
     def _load_schema(self, schema_yaml_path: str) -> dict:
         if schema_yaml_path:
             try:
@@ -228,6 +197,7 @@ class DatabaseManager:
             logging.error("No schema file provided")
             raise
 
+    # Get all app IDs that have already been processed
     def get_all_processed_app_ids(self) -> set:
         logging.info("Fetching all processed app IDs...")
         self.cursor.execute(self.schema['queries']['scrape_status']['all_prcoessed'])
@@ -235,11 +205,9 @@ class DatabaseManager:
         logging.info(f"Found {len(processed_ids)} processed app IDs")
         return processed_ids
 
+    # Drop all tables in the database (used for reset)
     def _drop_all_tables(self):
-        """
-        Drops all application tables from the database in the correct order.
-        This is a destructive operation and should be used with caution.
-        """
+
         try:
             self.cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
             logging.warning("Attempting to drop all scraper tables...")
@@ -254,6 +222,7 @@ class DatabaseManager:
             self.cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
             self.connection.commit()
 
+    # Create all tables as defined in the schema
     def _creates_tables(self):
         for table_name in self.schema['create_order']:
             try:
@@ -266,6 +235,7 @@ class DatabaseManager:
                 raise
         self.connection.commit()
 
+    # Check if an app ID has already been processed
     def is_processed(self, app_id: int) -> bool:
         try:
             self.cursor.execute(self.schema['queries']['scrape_status']['is_processed'], (app_id, ))
@@ -277,14 +247,17 @@ class DatabaseManager:
             logging.error(f"An unexpected error occurred while checking processing status for app_id {app_id}: {e}")
             raise
 
+    # Get the count of processed apps
     def get_processed_count(self) -> int:
         self.cursor.execute("SELECT COUNT(1) as count FROM scrape_status")
         result = self.cursor.fetchone()
         return result['count'] if result else 0
 
+    # Mark an app as processed with a given status
     def mark_as_processed(self, appid: int, status: str):
         self.cursor.execute(self.schema['queries']['scrape_status']['mark_processed'], (appid, status))
 
+    # Insert a name into a lookup table if not exists, and return its ID
     def _get_or_create_id(self, table: str, name: str) -> int:
         sql_insert = self.schema['queries']['lookup_tables']['insert_ignore'].format(table=table)
         sql_select = self.schema['queries']['lookup_tables']['select_id'].format(table=table)
@@ -293,11 +266,13 @@ class DatabaseManager:
         result = self.cursor.fetchone()
         return result['id'] if result else -1
 
+    # Add a pending DLC link to be resolved later
     def add_pending_dlc_link(self, dlc_id: int, base_game_id: int):
         logging.info(f"Adding pending DLC link for DLC ID {dlc_id} and base game ID {base_game_id}")
         sql = self.schema['queries']['junction_tables']['add_pending_dlc']
         self.cursor.execute(sql, (dlc_id, base_game_id))
 
+    # Resolve all pending DLC links in the database
     def resolve_pending_dlc_links(self):
         logging.info("Attempting to resolve pending DLC links")
         try:
@@ -314,44 +289,46 @@ class DatabaseManager:
         except Exception as e:
             logging.error(f"Failed to resolve pending DLC links: {e}")
 
+    # Add app and its relations (developers, publishers, etc.) to the database
     def add_app_and_relations(self, parsed_data: Dict[str, Any]):
-        """Inserts/updates an app in the master `apps` table, then links all its related data."""
-        # --- THIS IS THE CRUCIAL FIX ---
-        # We now pass the 'main_tuple' to the execute command, which matches the '%s' placeholders.
         self.cursor.execute(self.schema['queries']['apps']['insert_update'], parsed_data['main_tuple'])
-
-        # The app's ID is the first item in the tuple.
         app_id = parsed_data['main_tuple'][0]
-
-        # The rest of the logic for linking related data remains the same.
         for item_type in ['developers', 'publishers', 'categories', 'genres']:
             sql_link = self.schema['queries']['junction_tables']['insert_ignore'].format(table=f'app_{item_type}')
             for name in parsed_data.get(item_type, []):
                 item_id = self._get_or_create_id(item_type, name)
-                if item_id != -1: self.cursor.execute(sql_link, (app_id, item_id))
+                if item_id != -1:
+                    self.cursor.execute(sql_link, (app_id, item_id))
 
         sql_link_lang = self.schema['queries']['junction_tables']['insert_language']
         for lang_name in parsed_data.get('supported_languages', []):
             is_audio = lang_name in parsed_data['main_dict'].get('full_audio_languages', [])
             lang_id = self._get_or_create_id('languages', lang_name)
-            if lang_id != -1: self.cursor.execute(sql_link_lang, (app_id, lang_id, is_audio))
+            if lang_id != -1:
+                self.cursor.execute(sql_link_lang, (app_id, lang_id, is_audio))
 
         sql_link_tag = self.schema['queries']['junction_tables']['insert_tag']
+        # If tags are a list, print them (debug), otherwise process as dict
         if isinstance(parsed_data.get('tags', {}), list):
             print(parsed_data.get('tags', {}))
         for tag_name, tag_value in ({} if isinstance(parsed_data.get('tags', {}), list) else parsed_data.get('tags', {})).items():
             tag_id = self._get_or_create_id('tags', tag_name)
-            if tag_id != -1: self.cursor.execute(sql_link_tag, (app_id, tag_id, tag_value))
+            if tag_id != -1:
+                self.cursor.execute(sql_link_tag, (app_id, tag_id, tag_value))
 
+    # Add achievements for an app to the database
     def add_achievements(self, achievements: list):
-        if not achievements: return
+        if achievements == []:
+            return
         sql = self.schema['queries']['achievements']['insert_update']
         data = [(a['app_id'], a['api_name'], a['display_name'],
             a['description'], a['global_completion_rate']) for a in achievements]
         self.cursor.executemany(sql, data)
 
+    # Add reviews for an app to the database
     def add_reviews(self, reviews: list, app_id: str):
-        if not reviews: return
+        if reviews == []:
+            return
         sql_insert_review = self.schema['queries']['reviews']['insert_update']
         sql_link_review = self.schema['queries']['junction_tables']['insert_reviews']
         review_tuples, link_tuples = [], []
@@ -368,13 +345,11 @@ class DatabaseManager:
         if link_tuples:
             self.cursor.executemany(sql_link_review, link_tuples)
 
-    def update_time_to_beat(self, appid: int, time_data: dict):
-        sql = self.schema['queries']['apps']['update_time_to_beat']
-        self.cursor.execute(sql, (time_data.get('main'), time_data.get('extras'), time_data.get('completionist'), appid))
-
+    # Commit changes to the database
     def commit(self):
         self.connection.commit()
 
+    # Close the database connection
     def close(self):
         if self.connection and self.connection.open:
             self.connection.commit()
@@ -383,6 +358,9 @@ class DatabaseManager:
             logging.info("Database connection closed")
 
 class SteamScraperApplication:
+    """
+    Main application class for scraping Steam data and storing it in the database.
+    """
     def __init__(self):
         self.args = self._setup_arg_parser()
         db_creds, steam_api_key = self._load_and_validate_credentials()
@@ -391,6 +369,7 @@ class SteamScraperApplication:
 
         # self.igdb_api = IGDB_API(CONFIG['scraper_settings'])
 
+    # Load credentials from environment and validate presence
     def _load_and_validate_credentials(self):
         logging.info("Loading credentials from .env file...")
         db_vars = {'host': 'DB_HOST', 'user': 'DB_USER', 'password': 'DB_PASSWORD', 'database': 'DB_NAME'}
@@ -407,7 +386,8 @@ class SteamScraperApplication:
         logging.info("Credentials loaded successfully.")
         return db_creds, steam_api_key
 
-    def run(self):
+    # Main run loop for scraping and processing apps
+    def run(self): # type: ignore
         logging.info(f"Steam Scraper {__version__} starting.")
 
         app_ids = self.steam_api.get_all_app_ids()
@@ -415,7 +395,7 @@ class SteamScraperApplication:
             logging.error("Could not retrieve app list, Exiting. ")
             sys.exit(1)
 
-
+        # Remove already processed app IDs from the list
         processed_in_db = self.db.get_processed_count()
         processed_id_set = self.db.get_all_processed_app_ids()
         __temp_id = deepcopy(app_ids)
@@ -438,7 +418,7 @@ class SteamScraperApplication:
                         continue
                 self.show_progress_bar('Scraping', i + 1, total_apps, newly_processed_count)
                 if self.db.is_processed(appid):
-                    sys.stdout.write('.');
+                    sys.stdout.write('.')
                     sys.stdout.flush()
                     continue
 
@@ -466,28 +446,32 @@ class SteamScraperApplication:
                 if parsed_data.get('base_game_id'):
                    self.db.add_pending_dlc_link(appid, parsed_data['base_game_id'])
 
-
+                # Add achievements and reviews if applicable
                 if app_type == "game":
-                    # game_name = parsed_data['main_dict']['name']
-                    # if game_name:
-                    #     time_data = self.igdb_api.fetch_time_to_beat_by_name(game_name)
-                    #     if time_data: self.db.update_time_to_beat(appid, time_data)
                     if parsed_data['main_dict']['achievements_count'] > 0:
                         self.db.add_achievements(self.steam_api.get_achievements(appid_str))
+                        self.db.commit()
                 self.db.add_reviews(self.steam_api.get_reviews(appid_str), appid_str)
 
-                self.db.mark_as_processed(appid, 'success'); self.db.commit()
+                self.db.mark_as_processed(appid, 'success')
+                self.db.commit()
                 newly_processed_count += 1
                 time.sleep(sleep_time)
-        except (KeyboardInterrupt, SystemExit): print("\n"); logging.warning("Shutdown signal received...")
-        except Exception: print("\n"); logging.error(f"An unexpected error occurred: {traceback.format_exc()}")
+        except (KeyboardInterrupt, SystemExit):
+            print("\n")
+            logging.warning("Shutdown signal received...")
+        except Exception:
+            print("\n")
+            logging.error(f"An unexpected error occurred: {traceback.format_exc()}")
         finally:
-
+            # Resolve any pending DLC links and show final progress
             self.db.resolve_pending_dlc_links()
             self.show_progress_bar('Finished', total_apps, total_apps, newly_processed_count)
-            print("\n"); logging.info(f"Scrape session concluded. Processed {newly_processed_count} new apps.")
+            print("\n")
+            logging.info(f"Scrape session concluded. Processed {newly_processed_count} new apps.")
             self.db.close()
 
+    # Set up command-line argument parser
     def _setup_arg_parser(self) -> argparse.Namespace:
         parser = argparse.ArgumentParser(description=f'Steam Scraper {__version__}',
             formatter_class=argparse.RawTextHelpFormatter)
@@ -497,6 +481,7 @@ class SteamScraperApplication:
             help='Pre-filter which are already processed')
         return parser.parse_args()
 
+    # Parse app details and SteamSpy details into a structured dict for DB insertion
     def _parse_app_data(self, app_details: dict, spy_details: Optional[dict]) -> dict:
         appid = app_details['steam_appid']
         app_type = app_details.get('type')
@@ -513,9 +498,11 @@ class SteamScraperApplication:
             'short_description': SteamScraperApplication.sanitize_text(app_details.get('short_description')),
             'reviews_summary': SteamScraperApplication.sanitize_text(app_details.get('reviews'))
         }
-        if 'price_overview' in app_details: main_data['price'] = self.price_to_float(
+        if 'price_overview' in app_details:
+            main_data['price'] = self.price_to_float(
             app_details['price_overview'].get('final_formatted', ''))
-        if 'recommendations' in app_details: main_data['recommendations'] = app_details['recommendations'].get('total', 0)
+        if 'recommendations' in app_details:
+            main_data['recommendations'] = app_details['recommendations'].get('total', 0)
         if 'metacritic' in app_details:
             main_data['metacritic_score'] = app_details['metacritic'].get('score', 0)
             main_data['metacritic_url'] = app_details['metacritic'].get('url')
@@ -538,6 +525,7 @@ class SteamScraperApplication:
                     'user_score': spy_details.get('userscore', 0), 'score_rank': spy_details.get('score_rank', '')
                 })
 
+        # Parse supported languages and full audio languages
         supported_languages, full_audio_languages = [], []
         langs = [lang.strip()
             for lang in SteamScraperApplication.sanitize_text(
@@ -546,7 +534,8 @@ class SteamScraperApplication:
             clean_lang = lang.replace('*', '').strip()
             if clean_lang:
                 supported_languages.append(clean_lang)
-                if lang.endswith('*'): full_audio_languages.append(clean_lang)
+                if lang.endswith('*'):
+                    full_audio_languages.append(clean_lang)
         main_data_tuple = (
                     main_data['id'], main_data['type'], main_data['name'],
                     main_data['release_date'], main_data['price'], main_data['positive_reviews'],
@@ -568,8 +557,10 @@ class SteamScraperApplication:
             'supported_languages': supported_languages, 'full_audio_languages': full_audio_languages,
             'tags': spy_details.get('tags', {}) if spy_details else {}
         }
+
     @staticmethod
     def sanitize_text(text: Optional[str]) -> str:
+        # Remove HTML tags and escape sequences from text
         if not text:
             return ''
         text = str(text).replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
@@ -577,12 +568,15 @@ class SteamScraperApplication:
 
     @staticmethod
     def parse_steam_date(date_str: str):
-        if not date_str or 'coming_soon' in date_str: return None
+        # Parse Steam date string to YYYY-MM-DD format
+        if not date_str or 'coming_soon' in date_str:
+            return None
         cleaned_date = re.sub(r'(\d+)(st|nd|rd|th)', r'\1', date_str.replace(',', ''))
         try:
             return dt.datetime.strptime(cleaned_date, '%d %b %Y').strftime('%Y-%m-%d')
         except ValueError:
-            try: return dt.datetime.strptime(cleaned_date, '%b %d %Y').strftime('%Y-%m-%d')
+            try:
+                return dt.datetime.strptime(cleaned_date, '%b %d %Y').strftime('%Y-%m-%d')
             except ValueError:
                 return None
 
@@ -599,6 +593,7 @@ class SteamScraperApplication:
 
     @staticmethod
     def price_to_float(price_text: str) -> float:
+        # Convert price string to float
         try:
             price_text = price_text.replace(',', '.')
             match = re.search(r'([0-9]+\.?[0-9]*)', price_text)
@@ -607,6 +602,7 @@ class SteamScraperApplication:
             return 0.0
 
 if __name__ == '__main__':
+    # Entry point: load endpoints/config, create scraper, and run
     load_endpoints_file()
     load_config_file()
     scraper = SteamScraperApplication()

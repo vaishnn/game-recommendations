@@ -6,18 +6,16 @@ venv/
 .test_files
 oruse-aws-key-1.pem
 SteamChart Data/
-.old_files/
+.old_logs/
 static/
 templates/
 applist.json
 intro.py
+.DS_Store
 scraper_*
 
 __pycache__/
 *.pyc
-.idea/      # For PyCharm/IntelliJ
-.vscode/    # For VS Code
-*.iml       # IntelliJ IDEA module files
 .DS_Store   # macOS system file
 
 # Local configuration files
