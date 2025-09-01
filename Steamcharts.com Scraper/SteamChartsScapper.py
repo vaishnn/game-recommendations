@@ -29,23 +29,23 @@ def scrape_steam_charts():
             if not games_table:
                 print("No more tables end of the scrape")
                 break
-            rows = games_table.find('tbody').find_all('tr')
+            rows = games_table.find('tbody').find_all('tr') #type: ignore
 
             if not rows or len(rows) == 0:
                 print("No more rows end of the scrape")
                 break
 
             for row in rows:
-                cols = row.find_all('td')
+                cols = row.find_all('td') #type: ignore
 
                 if len(cols) <6:
                     continue
 
-                name_cell = cols[1].find('a')
+                name_cell = cols[1].find('a') #type: ignore
                 if not name_cell:
                     continue
 
-                name = name_cell.text.strip()
+                name = name_cell.text.strip() #type: ignore
                 peak = cols[4].text.strip()
                 hours_played_all_time = cols[5].text.strip()
                 all_games_data.append({
