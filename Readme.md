@@ -1,4 +1,4 @@
-# Steam Game Recommender
+# Game Recommender
 
 An application designed to generate personalized game recommendations based on a user's Steam library. This tool allows users to select reference games, adjust their individual influence, and configure discovery preferences to identify new titles.
 
@@ -23,7 +23,7 @@ The project utilizes a Python-based backend to serve as a secure proxy for all S
 The project is organized as follows:
 
 ```
-steam-game-recommender/
+game-recommender/
 ├── .env                # Stores the secret Steam API key
 ├── requirements.txt    # Python dependencies
 ├── server.py           # Flask API proxy server
@@ -64,8 +64,8 @@ Follow these instructions to configure and install the project on your local mac
 ### 1. Clone the Repository
 
 ```sh
-git clone https://github.com/your-username/steam-game-recommender.git
-cd steam-game-recommender
+git clone https://github.com/your-username/game-recommender.git
+cd game-recommender
 ```
 
 ### 2. Configure the Backend
